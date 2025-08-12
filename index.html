@@ -85,6 +85,13 @@
     }
     .panel-header h1 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.02em; }
     
+    /* MODIFICATION: Wrapper for right-side header controls */
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
     /* --- Controls Section --- */
     .controls { display: grid; grid-template-columns: 1fr; gap: 12px; }
     
@@ -124,7 +131,6 @@
     /* --- List (replaces table) --- */
     .bookmark-list { display: flex; flex-direction: column; }
     
-    /* MODIFICATION: Updated grid-template-columns to remove the Actions column */
     .list-header {
       display: grid; grid-template-columns: 2fr 3fr minmax(90px, auto); gap: 16px;
       padding: 8px 20px; color: var(--text-muted); font-size: 14px;
@@ -134,8 +140,6 @@
     .sort-indicator { font-size: 12px; }
 
     .list-body { display: flex; flex-direction: column; }
-    
-    /* MODIFICATION: Updated grid-template-columns to align with the header */
     .bookmark-item {
       display: grid; grid-template-columns: 2fr 3fr minmax(90px, auto); gap: 16px;
       align-items: center; padding: 12px 20px; border-radius: 12px;
@@ -178,6 +182,62 @@
     }
     [data-theme="light"] .thumb { transform: translateX(22px); }
 
+    /* MODIFICATION: Styles for the new dropdown menu */
+    .menu-container {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .dropdown-panel {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      width: 220px;
+      background: var(--panel-bg);
+      backdrop-filter: saturate(180%) blur(20px);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      border-radius: 12px;
+      border: 1px solid var(--panel-stroke);
+      box-shadow: 0 10px 30px rgba(0,0,0,.2);
+      padding: 8px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-10px);
+      transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+    }
+    .dropdown-panel.open {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+    .menu-item {
+      width: 100%;
+      padding: 10px 12px;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      text-align: left;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .menu-item:hover {
+      background: var(--item-hover-bg);
+    }
+    #menu-toggle .icon {
+      width: 24px;
+      height: 24px;
+    }
+    /* End of new styles */
+
   </style>
 </head>
 <body data-theme="dark">
@@ -185,9 +245,23 @@
   <main class="glass-panel">
     <header class="panel-header">
       <h1>My Bookmarks</h1>
-      <button id="themeToggle" class="switch" title="Toggle theme">
-        <div class="thumb"></div>
-      </button>
+      <!-- MODIFICATION: Grouped right-side controls -->
+      <div class="header-actions">
+        <button id="themeToggle" class="switch" title="Toggle theme">
+          <div class="thumb"></div>
+        </button>
+        <!-- MODIFICATION: New Menu Structure -->
+        <div class="menu-container">
+          <button id="menu-toggle" class="icon-btn" title="More options">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 8C13.1046 8 14 7.10457 14 6C14 4.89543 13.1046 4 12 4C10.8954 4 10 4.89543 10 6C10 7.10457 10.8954 8 12 8Z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><path d="M12 14C13.1046 14 14 13.1046 14 12C14 10.8954 13.1046 10 12 10C10.8954 10 10 10.8954 10 12C10 13.1046 10.8954 14 12 14Z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><path d="M12 20C13.1046 20 14 19.1046 14 18C14 16.8954 13.1046 16 12 16C10.8954 16 10 16.8954 10 18C10 19.1046 10.8954 20 12 20Z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </button>
+          <div id="dropdown-menu" class="dropdown-panel">
+            <button id="importBtn" class="menu-item">Import from File</button>
+            <button id="exportBtn" class="menu-item">Export to File</button>
+            <input type="file" id="fileInput" accept=".json" style="display: none;" />
+          </div>
+        </div>
+      </div>
     </header>
 
     <section class="controls">
@@ -209,7 +283,6 @@
           <span>Description</span>
           <span class="sort-indicator" id="sort-about">—</span>
         </div>
-        <!-- MODIFICATION: Removed the "Actions" heading div -->
       </header>
       <div class="list-body" id="list-body">
         <!-- Bookmarks will be rendered here by JavaScript -->
@@ -321,6 +394,7 @@
     }
 
     /* -------- Event Listeners -------- */
+    
     // Search
     $('#search').addEventListener('input', e => { state.q = e.target.value; state.page = 1; render(); });
 
@@ -412,6 +486,80 @@
             if (e.key === 'Escape') { e.preventDefault(); render(); }
         });
     }
+
+    // MODIFICATION: Logic for new dropdown menu
+    const menuToggle = $('#menu-toggle');
+    const dropdownMenu = $('#dropdown-menu');
+    const menuContainer = $('.menu-container');
+
+    menuToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      dropdownMenu.classList.toggle('open');
+    });
+
+    window.addEventListener('click', (e) => {
+      if (!menuContainer.contains(e.target)) {
+        dropdownMenu.classList.remove('open');
+      }
+    });
+
+    // MODIFICATION: Logic for Import/Export buttons (now in menu)
+    const importBtn = $('#importBtn');
+    const exportBtn = $('#exportBtn');
+    const fileInput = $('#fileInput');
+
+    exportBtn.addEventListener('click', () => {
+      dropdownMenu.classList.remove('open'); // Close menu
+      if (rows.length === 0) {
+        alert("No bookmarks to export.");
+        return;
+      }
+      const dataStr = JSON.stringify(rows, null, 2);
+      const blob = new Blob([dataStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `bookmarks-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+
+    importBtn.addEventListener('click', () => {
+      dropdownMenu.classList.remove('open'); // Close menu
+      if (rows.length > 0) {
+        if (!confirm("This will overwrite your current bookmarks. Are you sure you want to continue?")) {
+          return;
+        }
+      }
+      fileInput.click();
+    });
+
+    fileInput.addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const importedRows = JSON.parse(e.target.result);
+          if (Array.isArray(importedRows)) {
+            rows = importedRows;
+            save();
+            render();
+            alert("Bookmarks imported successfully!");
+          } else {
+            throw new Error("Invalid file format.");
+          }
+        } catch (error) {
+          alert("Error importing file: " + error.message);
+        }
+        fileInput.value = '';
+      };
+      reader.readAsText(file);
+    });
+    // End of new/modified logic
 
     /* -------- Initial Load -------- */
     function init() {
